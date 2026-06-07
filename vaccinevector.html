@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRO-LAB // Advanced Vaccine Vector Engineering & Simulation Suite</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-dark: #02040a;
+            --glass-base: rgba(6, 11, 26, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --cyan-glow: rgba(0, 242, 254, 0.15);
+            
+            /* Accurate Wet-Lab Bio-Color Palette */
+            --lipid-blue: #00F2FE;
+            --rna-purple: #9D4EDD;
+            --capsid-teal: #00E676;
+            --spike-protein: #FF3366;
+            --serum-neutral: #FFB300;
+            
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --font-sans: 'Plus Jakarta Sans', sans-serif;
+            --font-mono: 'Space Grotesk', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            font-family: var(--font-sans);
+            color: var(--text-primary);
+        }
+
+        /* ── 3D CANVAS FRAMEWORK ── */
+        #canvas-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* ── SYMMETRICAL HUD INTERFACE ── */
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 1.5rem;
+        }
+
+        .interactive { pointer-events: auto; }
+
+        /* TOP BANNER: Clinical Identity */
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            background: var(--glass-base);
+            border: 1px solid var(--glass-border);
+            padding: 0.75rem 1.5rem;
+            border-radius: 14px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .meta-group h1 {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--lipid-blue);
+        }
+
+        .meta-group p {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .academic-reference-badge {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            background: rgba(255,255,255,0.04);
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+        }
+
+        /* SYMMETRICAL SPLIT-WING SIDE PANELS */
+        .main-workspace-body {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            padding: 1rem 0;
+        }
+
+        .wing-panel {
+            width: 320px;
+            background: var(--glass-base);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.25rem;
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            opacity: 0;
+            transform: translateX(var(--pane-slide, -20px));
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .wing-panel.active-viz {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .left-wing { --pane-slide: -30px; }
+        .right-wing { --pane-slide: 30px; }
+
+        .panel-section-title {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding-bottom: 0.5rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* CENTRALIZED PROGRESSIVE SEQUENCE CONTROLLER */
+        .bottom-dock-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: auto;
+        }
+
+        .central-control-card {
+            width: 100%;
+            max-width: 650px;
+            background: var(--glass-base);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 1.5rem;
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* Process Steps Tracker Ribbon */
+        .stepper-ribbon {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            background: rgba(0,0,0,0.2);
+            padding: 0.35rem;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .step-node {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            font-weight: 500;
+            padding: 0.5rem;
+            border-radius: 50px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+
+        .step-node.active-step {
+            color: var(--lipid-blue);
+            background: rgba(0, 242, 254, 0.08);
+            font-weight: 600;
+        }
+
+        /* Dynamic Descriptive Copy Box */
+        .workflow-description-block {
+            text-align: center;
+            min-height: 55px;
+        }
+
+        .workflow-description-block h2 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+
+        .workflow-description-block p {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Interactive Elements Container */
+        .stage-action-view {
+            display: none;
+            animation: paneEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .stage-action-view.active-view {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .symmetrical-options-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .biotech-select-card {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 1rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .biotech-select-card:hover {
+            background: rgba(0, 242, 254, 0.02);
+            border-color: rgba(0, 242, 254, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .biotech-select-card.selected {
+            border-color: var(--lipid-blue);
+            background: rgba(0, 242, 254, 0.05);
+            box-shadow: 0 0 20px var(--cyan-glow);
+        }
+
+        .biotech-select-card h3 {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+
+        .biotech-select-card p {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        /* List Layouts */
+        .component-assembly-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .assembly-item-trigger {
+            background: rgba(255,255,255,0.01);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 0.65rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .assembly-item-trigger:hover {
+            background: rgba(255,255,255,0.03);
+            border-color: rgba(255,255,255,0.15);
+        }
+
+        .assembly-item-trigger.assembled {
+            border-color: var(--capsid-teal);
+            background: rgba(0, 230, 118, 0.03);
+        }
+
+        .assembly-item-trigger.assembled i {
+            color: var(--capsid-teal);
+        }
+
+        /* Action Buttons */
+        .prime-action-btn {
+            background: linear-gradient(135deg, var(--lipid-blue), #0072FF);
+            color: #02040a;
+            border: none;
+            border-radius: 50px;
+            padding: 0.8rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .prime-action-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 20px rgba(0, 242, 254, 0.4);
+        }
+
+        .prime-action-btn:disabled {
+            background: rgba(255,255,255,0.04);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        /* Real-Time Metric Telemetry Boxes */
+        .telemetry-row {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+        }
+
+        .telemetry-row span:first-child { color: var(--text-secondary); }
+        .telemetry-row span:last-child { color: var(--lipid-blue); font-weight: 500; }
+
+        .progress-bar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .progress-bar-meta {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+        }
+
+        .bar-track {
+            height: 4px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--lipid-blue);
+            transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ── DYNAMIC 3D SPATIAL ANNOTATIONS ── */
+        #spatial-labels-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .spatial-tag {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            background: rgba(2, 4, 10, 0.9);
+            border: 1px solid var(--lipid-blue);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--lipid-blue);
+            white-space: nowrap;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .spatial-tag.visible { opacity: 1; }
+        .spatial-tag span { font-family: var(--font-sans); color: var(--text-secondary); font-size: 0.58rem; margin-top: 2px; }
+
+        @keyframes paneEntrance {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-wrapper"></div>
+
+    <div id="spatial-labels-layer">
+        <div class="spatial-tag" id="tag-outer-envelope">
+            LIPID BILAYER SHELL [STRUCTURAL DOMAIN]
+            <span>In-vivo protection & endosomal cellular entry matrix</span>
+        </div>
+        <div class="spatial-tag" id="tag-inner-cargo">
+            MODIFIED ENCODING PLATFORM [TRANSGENE CARGO]
+            <span>N1-Methylpseudouridine sequence instructing antigen synthesis</span>
+        </div>
+    </div>
+
+    <div class="hud-overlay">
+        
+        <header class="hud-header interactive">
+            <div class="meta-group">
+                <h1>Biomedical Vector Engineering Suite</h1>
+                <p id="system-status-log">Status: Awaiting Platform Parameter Specs</p>
+            </div>
+            <div class="academic-reference-badge">
+                <i class="fa-solid fa-book-open"></i> Ref: Harvard / MIT Broad Labs (Nature-2024 Framework)
+            </div>
+        </header>
+
+        <div class="main-workspace-body">
+            
+            <aside class="wing-panel left-wing interactive" id="left-telemetry-panel">
+                <div class="panel-section-title"><i class="fa-solid fa-gauge-high"></i> Vector Analytics</div>
+                <div class="telemetry-row"><span>Encapsulation Yield</span><span id="tel-yield">98.4%</span></div>
+                <div class="telemetry-row"><span>Mean Particle Size</span><span id="tel-size">84.2 nm</span></div>
+                <div class="telemetry-row"><span>Polydispersity (PDI)</span><span id="tel-pdi">0.045</span></div>
+                <div class="telemetry-row"><span>Zeta Charge Pot.</span><span id="tel-zeta">-3.8 mV</span></div>
+                <div class="telemetry-row"><span>Thermal Stability</span><span style="color:var(--capsid-teal);">Optimized</span></div>
+            </aside>
+
+            <aside class="wing-panel right-wing interactive" id="right-simulation-panel">
+                <div class="panel-section-title"><i class="fa-solid fa-dna"></i> Immuno-Dynamics Desk</div>
+                
+                <div class="progress-bar-container">
+                    <div class="progress-bar-meta"><span>Antigen Expression Velocity</span><span id="txt-sim-exp">0%</span></div>
+                    <div class="bar-track"><div class="bar-fill" id="bar-sim-exp" style="background:var(--spike-protein);"></div></div>
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-bar-meta"><span>Neutralizing Antibody Count</span><span id="txt-sim-ab">0%</span></div>
+                    <div class="bar-track"><div class="bar-fill" id="bar-sim-ab" style="background:var(--serum-neutral);"></div></div>
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-bar-meta"><span>Wild-Type Pathogen Clearance</span><span id="txt-sim-clear">0%</span></div>
+                    <div class="bar-track"><div class="bar-fill" id="bar-sim-clear" style="background:var(--capsid-teal);"></div></div>
+                </div>
+
+                <button class="prime-action-btn" id="btn-pathogen-challenge" style="padding:0.5rem; font-size:0.65rem;" onclick="triggerPathogenInfectionChallenge()">
+                    <i class="fa-solid fa-biohazard"></i> Run Pathogen Resistance Challenge
+                </button>
+            </aside>
+        </div>
+
+        <div class="bottom-dock-wrapper">
+            <main class="central-control-card interactive">
+                
+                <div class="stepper-ribbon">
+                    <button class="step-node active-step" id="step-tab-1">1. Vector Base</button>
+                    <button class="step-node" id="step-tab-2">2. Molecular Bio</button>
+                    <button class="step-node" id="step-tab-3">3. Delivery Run</button>
+                    <button class="step-node" id="step-tab-4">4. System Output</button>
+                </div>
+
+                <div class="workflow-description-block">
+                    <h2 id="lbl-workflow-title">Select Delivery System Architecture</h2>
+                    <p id="lbl-workflow-desc">Choose the base delivery matrix. This setup defines how the payload travels through biological membranes and engages host target translation sites.</p>
+                </div>
+
+                <div class="stage-action-view active-view" id="view-stage-1">
+                    <div class="symmetrical-options-row">
+                        <div class="biotech-select-card selected" id="card-plat-mrna" onclick="switchPlatformType('mrna')">
+                            <i class="fa-solid fa-capsules" style="color:var(--lipid-blue); margin-bottom:0.5rem; font-size:1.2rem;"></i>
+                            <h3>mRNA Liposome</h3>
+                            <p>Synthetic lipid vesicle nanostructure</p>
+                        </div>
+                        <div class="biotech-select-card" id="card-plat-adeno" onclick="switchPlatformType('adeno')">
+                            <i class="fa-solid fa-virus" style="color:var(--capsid-teal); margin-bottom:0.5rem; font-size:1.2rem;"></i>
+                            <h3>Adenovirus Vector</h3>
+                            <p>Replication-defective viral chassis</p>
+                        </div>
+                    </div>
+                    <button class="prime-action-btn" onclick="advanceToStage2()"><i class="fa-solid fa-arrow-right"></i> Initialize Selection</button>
+                </div>
+
+                <div class="stage-action-view" id="view-stage-2">
+                    <div class="component-assembly-list" id="list-components-mrna">
+                        <div class="assembly-item-trigger" onclick="assembleBioNode(this, 'ionizable', '#00F2FE')">
+                            <span><i class="fa-solid fa-circle-nodes"></i> Ionizable Lipids (PH-Dependent Endosomal Release)</span>
+                            <i class="fa-solid fa-square-plus"></i>
+                        </div>
+                        <div class="assembly-item-trigger" onclick="assembleBioNode(this, 'peg', '#00E676')">
+                            <span><i class="fa-solid fa-shield"></i> PEGylated Lipids (Stealth Steric Stabilization)</span>
+                            <i class="fa-solid fa-square-plus"></i>
+                        </div>
+                        <div class="assembly-item-trigger" onclick="assembleBioNode(this, 'payload', '#9D4EDD')">
+                            <span><i class="fa-solid fa-dna"></i> Modified mRNA Cargo (Spike Sequence)</span>
+                            <i class="fa-solid fa-square-plus"></i>
+                        </div>
+                    </div>
+
+                    <div class="component-assembly-list" id="list-components-adeno" style="display: none;">
+                        <div class="assembly-item-trigger" onclick="assembleBioNode(this, 'e1e3', '#9D4EDD')">
+                            <span><i class="fa-solid fa-scissors"></i> E1/E3 Genomic Deletion (Replication Defect)</span>
+                            <i class="fa-solid fa-square-plus"></i>
+                        </div>
+                        <div class="assembly-item-trigger" onclick="assembleBioNode(this, 'transgene', '#00F2FE')">
+                            <span><i class="fa-solid fa-microchip"></i> Antigen Expression Cassette Insertion</span>
+                            <i class="fa-solid fa-square-plus"></i>
+                        </div>
+                    </div>
+
+                    <button class="prime-action-btn" id="btn-validate-assembly" disabled onclick="advanceToStage3()">
+                        <i class="fa-solid fa-microscope"></i> Verify Structural Packaging Integrity
+                    </button>
+                </div>
+
+                <div class="stage-action-view" id="view-stage-3">
+                    <button class="prime-action-btn" id="btn-execute-injection" onclick="executeIntracellularDeliverySequence()">
+                        <i class="fa-solid fa-syringe"></i> Inject Vector & Track Host Translation Loops
+                    </button>
+                </div>
+
+                <div class="stage-action-view" id="view-stage-4">
+                    <button class="prime-action-btn" style="background:rgba(255,255,255,0.05); color:var(--text-primary); border:1px solid var(--glass-border);" onclick="resetEngineeringWorkspace()">
+                        <i class="fa-solid fa-rotate-left"></i> Reset and Clean Workspace Framework
+                    </button>
+                </div>
+
+            </main>
+        </div>
+
+    </div>
+
+    <script>
+        /**
+         * 1. Three.js Real-World Chromatic WebGL Setup
+         */
+        const container = document.getElementById('canvas-wrapper');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x02040a);
+        scene.fog = new THREE.FogExp2(0x02040a, 0.04);
+
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 11); // Clean, centered camera configuration
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.3;
+        container.appendChild(renderer.domElement);
+
+        // Core Unified Component Assembly Groups
+        const masterPlatformGroup = new THREE.Group();
+        scene.add(masterPlatformGroup);
+
+        const mrnaLiposomeGroup = new THREE.Group();
+        const adenoCapsidGroup = new THREE.Group();
+        adenoCapsidGroup.position.y = -20; // Keep outside view bounds initially
+
+        masterPlatformGroup.add(mrnaLiposomeGroup);
+        masterPlatformGroup.add(adenoCapsidGroup);
+
+        // Professional Lab-Grade Illuminations Topology
+        const ambientSystemLight = new THREE.AmbientLight(0x0a1128, 6.0);
+        scene.add(ambientSystemLight);
+
+        const keyAnalyticalLightLeft = new THREE.PointLight(0x00F2FE, 6, 25);
+        keyAnalyticalLightLeft.position.set(-6, 5, 4);
+        scene.add(keyAnalyticalLightLeft);
+
+        const keyAnalyticalLightRight = new THREE.PointLight(0x9D4EDD, 5, 25);
+        keyAnalyticalLightRight.position.set(6, -5, 4);
+        scene.add(keyAnalyticalLightRight);
+
+        /**
+         * 2. High-Fidelity 3D Mathematical Mesh Structures
+         */
+        
+        // Build Liposome Framework
+        const baseLipidCoreMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(1.5, 32, 32),
+            new THREE.MeshPhysicalMaterial({
+                color: 0x051026, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.65, transmission: 0.3
+            })
+        );
+        mrnaLiposomeGroup.add(baseLipidCoreMesh);
+
+        const dynamicLipidBilayerShellGroup = new THREE.Group();
+        mrnaLiposomeGroup.add(dynamicLipidBilayerShellGroup);
+
+        // Build Inner Helical Structural Nucleic Acids
+        const structuralHelixPoints = [];
+        for (let i = 0; i < 30; i++) {
+            const angle = i / 29 * Math.PI * 6;
+            structuralHelixPoints.push(new THREE.Vector3(Math.cos(angle)*0.65, (i*0.05)-0.75, Math.sin(angle)*0.65));
+        }
+        const rnaHelixBaseMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(new THREE.CatmullRomCurve3(structuralHelixPoints), 40, 0.035, 8, false),
+            new THREE.MeshStandardMaterial({ color: 0x9D4EDD, emissive: 0x4a0082, roughness: 0.2 })
+        );
+        mrnaLiposomeGroup.add(rnaHelixBaseMesh);
+
+        // Build Adenovirus Capsid Framework (Real-World Icosahedral Form)
+        const adenoIcosahedralMesh = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(2.1, 1),
+            new THREE.MeshPhysicalMaterial({
+                color: 0x02231c, roughness: 0.3, metalness: 0.6, transparent: true, opacity: 0.8, wireframe: true
+            })
+        );
+        adenoCapsidGroup.add(adenoIcosahedralMesh);
+
+        const adenoGenomicSpliceGroup = new THREE.Group();
+        adenoCapsidGroup.add(adenoGenomicSpliceGroup);
+
+        /**
+         * 3. Rigorous Peer-Reviewed Educational Content Mapping
+         */
+        let selectedPlatformPlatformType = 'mrna';
+        let currentWorkflowStageIndex = 1;
+        let runningAssembledNodeCount = 0;
+
+        const curriculumDatabase = {
+            stage1: { title: "Select Delivery System Architecture", desc: "Choose the base delivery matrix. This setup defines how the payload travels through biological membranes and engages host target translation sites." },
+            stage2: { title: "Formulate Vector Chemical Nano-Matrix", desc: "Synthesize the individual operational components. Lipidic matrices handle chemical delivery; adenoviral deletions safely lock out viral duplication pathways." },
+            stage3: { title: "Execute Intracellular Bio-Delivery Run", desc: "Inject the vehicle and track delivery. The vector matches with host cells via endocytosis, releasing the genetic sequence into the cytoplasm." },
+            stage4: { title: "Immune Translation System Outputs", desc: "The host ribosomes read the blueprint sequence to build target antigens. This alerts and trains your immune system, preparing it for future viral threats." }
+        };
+
+        function switchPlatformType(typeKey) {
+            selectedPlatformPlatformType = typeKey;
+            document.querySelectorAll('.biotech-select-card').forEach(c => c.classList.remove('selected'));
+            
+            if (typeKey === 'mrna') {
+                document.getElementById('card-plat-mrna').classList.add('selected');
+                gsap.to(mrnaLiposomeGroup.position, { y: 0, duration: 0.6, ease: "power2.out" });
+                gsap.to(adenoCapsidGroup.position, { y: -20, duration: 0.6, ease: "power2.out" });
+            } else {
+                document.getElementById('card-plat-adeno').classList.add('selected');
+                gsap.to(mrnaLiposomeGroup.position, { y: -20, duration: 0.6, ease: "power2.out" });
+                gsap.to(adenoCapsidGroup.position, { y: 0, duration: 0.6, ease: "power2.out" });
+            }
+        }
+
+        /**
+         * 4. Symmetrical Progressive Pipeline Triggers
+         */
+        function advanceToStage2() {
+            currentWorkflowStageIndex = 2;
+            updateWorkflowUIPanelTexts();
+
+            document.getElementById('view-stage-1').classList.remove('active-view');
+            document.getElementById('view-stage-2').classList.add('active-view');
+            document.getElementById('step-tab-2').classList.add('active-step');
+
+            if (selectedPlatformPlatformType === 'mrna') {
+                document.getElementById('list-components-mrna').style.display = 'flex';
+                document.getElementById('list-components-adeno').style.display = 'none';
+            } else {
+                document.getElementById('list-components-mrna').style.display = 'none';
+                document.getElementById('list-components-adeno').style.display = 'flex';
+                
+                // Adjust Left Analytics Telemetry HUD for Viral Vectors
+                document.getElementById('tel-yield').innerText = "94.1% Purity";
+                document.getElementById('tel-size').innerText = "110.5 nm";
+                document.getElementById('tel-pdi').innerText = "0.012";
+                document.getElementById('tel-zeta').innerText = "+12.4 mV";
+            }
+
+            document.getElementById('left-telemetry-panel').classList.add('active-viz');
+            document.getElementById('system-status-log').innerText = "Status: Formulating Microfluidic Arrays";
+            setSpatialCalloutsVisibility(true);
+        }
+
+        function assembleBioNode(htmlElement, nodeKey, colorHex) {
+            if (htmlElement.classList.contains('assembled')) return;
+            htmlElement.classList.add('assembled');
+            htmlElement.querySelector('i').className = "fa-solid fa-circle-check";
+            runningAssembledNodeCount++;
+
+            // Render matching visual modifications on 3D objects
+            if (selectedPlatformPlatformType === 'mrna') {
+                const layerSubGroup = new THREE.Group();
+                const nodeDensity = 35;
+                const particleGeo = new THREE.SphereGeometry(0.07, 8, 8);
+                const particleMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(colorHex), roughness: 0.1, metalness: 0.2 });
+                const layerRadius = 1.5 + (runningAssembledNodeCount * 0.16);
+
+                for (let i = 0; i < nodeDensity; i++) {
+                    const sphericalPhi = Math.acos(-1 + (2 * i) / nodeDensity);
+                    const sphericalTheta = Math.sqrt(nodeDensity * Math.PI) * sphericalPhi;
+                    const individualNodeMesh = new THREE.Mesh(particleGeo, particleMat);
+                    individualNodeMesh.position.setFromSphericalCoords(layerRadius, sphericalPhi, sphericalTheta);
+                    layerSubGroup.add(individualNodeMesh);
+                }
+                dynamicLipidBilayerShellGroup.add(layerSubGroup);
+                gsap.from(layerSubGroup.scale, { x: 0.1, y: 0.1, z: 0.1, duration: 0.7, ease: "back.out(1.5)" });
+            } else {
+                // Handle Adenovirus structural changes
+                if (nodeKey === 'e1e3') {
+                    adenoIcosahedralMesh.material.wireframe = false;
+                    gsap.from(adenoIcosahedralMesh.scale, { x: 1.3, y: 1.3, z: 1.3, duration: 0.5, ease: "power2.out" });
+                } else if (nodeKey === 'transgene') {
+                    const genomicKnotMesh = new THREE.Mesh(
+                        new THREE.TorusKnotGeometry(0.55, 0.08, 50, 12),
+                        new THREE.MeshStandardMaterial({ color: 0x00F2FE, wireframe: true })
+                    );
+                    adenoGenomicSpliceGroup.add(genomicKnotMesh);
+                    gsap.from(genomicKnotMesh.scale, { x: 0, y: 0, z: 0, duration: 0.8 });
+                }
+            }
+
+            const targetLimit = selectedPlatformPlatformType === 'mrna' ? 3 : 2;
+            if (runningAssembledNodeCount === targetLimit) {
+                document.getElementById('btn-validate-assembly').disabled = false;
+            }
+        }
+
+        function advanceToStage3() {
+            currentWorkflowStageIndex = 3;
+            updateWorkflowUIPanelTexts();
+
+            document.getElementById('view-stage-2').classList.remove('active-view');
+            document.getElementById('view-stage-3').classList.add('active-view');
+            document.getElementById('step-tab-3').classList.add('active-step');
+
+            document.getElementById('system-status-log').innerText = "Status: Vector Validated & Bio-Available";
+        }
+
+        function executeIntracellularDeliverySequence() {
+            document.getElementById('btn-execute-injection').disabled = true;
+            document.getElementById('system-status-log').innerText = "Status: Simulating Carrier Endocytosis Pathway...";
+            
+            setSpatialCalloutsVisibility(false);
+            const activeWorkingMeshGroup = selectedPlatformPlatformType === 'mrna' ? mrnaLiposomeGroup : adenoCapsidGroup;
+
+            const trackingTimeline = gsap.timeline();
+            trackingTimeline.to(activeWorkingMeshGroup.position, { x: 5, y: 3, z: -6, duration: 1.8, ease: "power2.inOut" })
+                            .to(activeWorkingMeshGroup.scale, { x: 0, y: 0, z: 0, duration: 0.8 }, 0.9)
+                            .to({}, {
+                                duration: 0.1,
+                                onComplete: () => {
+                                    currentWorkflowStageIndex = 4;
+                                    updateWorkflowUIPanelTexts();
+
+                                    document.getElementById('view-stage-3').classList.remove('active-view');
+                                    document.getElementById('view-stage-4').classList.add('active-view');
+                                    document.getElementById('step-tab-4').classList.add('active-step');
+
+                                    document.getElementById('system-status-log').innerText = "Status: Intracellular Delivery Complete";
+                                    document.getElementById('right-simulation-panel').classList.add('active-viz');
+
+                                    // Run the protein translation progress bars automatically
+                                    gsap.to('#bar-sim-exp', { width: "100%", duration: 2.0 });
+                                    gsap.to('#txt-sim-exp', { duration: 2.0, snap: { text: 1 }, text: "100%" });
+                                    
+                                    gsap.to('#bar-sim-ab', { width: "100%", duration: 3.5, delay: 1.0 });
+                                    gsap.to('#txt-sim-ab', { duration: 3.5, delay: 1.0, snap: { text: 1 }, text: "100%" });
+                                }
+                            });
+        }
+
+        /**
+         * 5. Immune Outbreak Resistance Challenge Matrix
+         */
+        function triggerPathogenInfectionChallenge() {
+            document.getElementById('btn-pathogen-challenge').disabled = true;
+            document.getElementById('system-status-log').innerText = "Status: Wild-Type Pathogen Detected; Engaging Acquired Immunity...";
+
+            // Simulate the rapid clearance of viral loads due to vaccine training
+            gsap.to('#bar-sim-clear', { width: "100%", duration: 2.5, ease: "power1.inOut" });
+            
+            const countObj = { val: 0 };
+            gsap.to(countObj, {
+                val: 100,
+                duration: 2.5,
+                snap: { val: 1 },
+                onUpdate: () => {
+                    document.getElementById('txt-sim-clear').innerText = `${countObj.val}%`;
+                },
+                onComplete: () => {
+                    document.getElementById('system-status-log').innerText = "Status: Pathogen Neutralized. Protection Sequence Verified.";
+                }
+            });
+        }
+
+        function updateWorkflowUIPanelTexts() {
+            const dataRecord = curriculumDatabase[`stage${currentWorkflowStageIndex}`];
+            document.getElementById('lbl-workflow-title').innerText = dataRecord.title;
+            document.getElementById('lbl-workflow-desc').innerText = dataRecord.desc;
+        }
+
+        function setSpatialCalloutsVisibility(isVisible) {
+            const boundaryLabel1 = document.getElementById('tag-outer-envelope');
+            const boundaryLabel2 = document.getElementById('tag-inner-cargo');
+            
+            if (isVisible) {
+                boundaryLabel1.classList.add('visible');
+                boundaryLabel2.classList.add('visible');
+            } else {
+                boundaryLabel1.classList.remove('visible');
+                boundaryLabel2.classList.remove('visible');
+            }
+        }
+
+        function resetEngineeringWorkspace() {
+            // Restore structural scale profiles
+            mrnaLiposomeGroup.position.set(0,0,0); mrnaLiposomeGroup.scale.set(1,1,1);
+            adenoCapsidGroup.position.set(0,-20,0); adenoCapsidGroup.scale.set(1,1,1);
+
+            // Clear added experimental sub-nodes
+            while (dynamicLipidBilayerShellGroup.children.length > 0) { dynamicLipidBilayerShellGroup.remove(dynamicLipidBilayerShellGroup.children[0]); }
+            while (adenoGenomicSpliceGroup.children.length > 0) { adenoGenomicSpliceGroup.remove(adenoGenomicSpliceGroup.children[0]); }
+            adenoIcosahedralMesh.material.wireframe = true;
+
+            runningAssembledNodeCount = 0;
+            currentWorkflowStageIndex = 1;
+
+            // Reset HUD items back to initial states
+            document.querySelectorAll('.assembly-item-trigger').forEach(i => {
+                i.classList.remove('assembled');
+                i.querySelector('i').className = i.parentNode.id === 'list-components-mrna' && i.innerText.includes('mRNA') || i.parentNode.id === 'list-components-adeno' && i.innerText.includes('Insertion') ? "fa-solid fa-dna" : i.innerText.includes('Delet') ? "fa-solid fa-scissors" : "fa-solid fa-circle-nodes";
+            });
+            
+            document.querySelectorAll('.step-node').forEach((n, idx) => { if(idx > 0) n.classList.remove('active-step'); });
+            document.querySelectorAll('.bar-fill').forEach(b => b.style.width = "0%");
+            document.getElementById('txt-sim-exp').innerText = "0%";
+            document.getElementById('txt-sim-ab').innerText = "0%";
+            document.getElementById('txt-sim-clear').innerText = "0%";
+
+            document.getElementById('left-telemetry-panel').classList.remove('active-viz');
+            document.getElementById('right-simulation-panel').classList.remove('active-viz');
+            document.getElementById('btn-validate-assembly').disabled = true;
+            document.getElementById('btn-execute-injection').disabled = false;
+            document.getElementById('btn-pathogen-challenge').disabled = false;
+
+            document.getElementById('view-stage-4').classList.remove('active-view');
+            document.getElementById('view-stage-1').classList.add('active-view');
+
+            switchPlatformType('mrna');
+            updateWorkflowUIPanelTexts();
+            document.getElementById('system-status-log').innerText = "Status: Awaiting Platform Parameter Specs";
+        }
+
+        /**
+         * 6. Real-Time Unified Animation & Screen Trackers
+         */
+        const coreRuntimeClock = new THREE.Clock();
+        const projectionTransformVector = new THREE.Vector3();
+
+        function manageSpatialCalloutsMapping() {
+            if (currentWorkflowStageIndex !== 2) return;
+
+            const activeChassisGroup = selectedPlatformPlatformType === 'mrna' ? mrnaLiposomeGroup : adenoCapsidGroup;
+            projectionTransformVector.setFromMatrixPosition(activeChassisGroup.matrixWorld);
+            projectionTransformVector.project(camera);
+
+            const screenX = (projectionTransformVector.x * 0.5 + 0.5) * window.innerWidth;
+            const screenY = (projectionTransformVector.y * -0.5 + 0.5) * window.innerHeight;
+
+            const label1 = document.getElementById('tag-outer-envelope');
+            const label2 = document.getElementById('tag-inner-cargo');
+
+            label1.style.left = `${screenX}px`; label1.style.top = `${screenY - 110}px`;
+            label2.style.left = `${screenX}px`; label2.style.top = `${screenY + 110}px`;
+        }
+
+        function executeRenderLoop() {
+            requestAnimationFrame(executeRenderLoop);
+            const totalElapsedSecs = coreRuntimeClock.getElapsedTime();
+
+            // Balanced structural rotation around the central axis
+            mrnaLiposomeGroup.rotation.y = totalElapsedSecs * 0.18;
+            mrnaLiposomeGroup.rotation.x = Math.cos(totalElapsedSecs * 0.08) * 0.08;
+
+            adenoCapsidGroup.rotation.y = totalElapsedSecs * 0.12;
+
+            manageSpatialCalloutsMapping();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Run Application
+        executeRenderLoop();
+    </script>
+</body>
+</html>
